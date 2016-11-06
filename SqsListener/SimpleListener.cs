@@ -98,9 +98,13 @@ namespace QueueListener
         }
 
         /// <summary>
-        /// the problems wityh this are
-        /// - messages are handles 1 after another, not launched in parallel
-        /// - you wait for the last one to complete handling before getting any more
+        /// the problems with this approach are
+        /// - messages are handled 1 after another, not launched in parallel. 
+        /// You could start them all and then "await Task.WhenAll()
+        /// 
+        /// - but you also wait for the last handler to complete 
+        /// before getting any more messages off the queue. 
+        /// This is harder to fix and means that onbe fault can block the whole thing
         /// </summary>
         /// <param name="messages"></param>
         /// <returns></returns>
