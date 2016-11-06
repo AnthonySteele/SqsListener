@@ -1,4 +1,6 @@
-﻿namespace QueueListener
+﻿using System;
+
+namespace QueueListener
 {
     public class RecieveSpecification
     {
@@ -12,6 +14,15 @@
             WaitTimeSeconds = waitTimeSeconds;
             MaxMessagesPerRead = maxMessagesPerRead;
             MaxConcurrentWorkers = maxConcurrentWorkers;
+        }
+
+        public static RecieveSpecification MakeASimpleOne(string queueUrl)
+        {
+            return new RecieveSpecification(
+                queueUrl,
+                20,
+                10,
+                Environment.ProcessorCount * 12);
         }
 
         public string QueueUrl { get; private set; }

@@ -8,14 +8,6 @@ using Amazon.SQS.Model;
 
 namespace QueueListener
 {
-    public static class SimpleListenerConstants
-    {
-        public static int MaxNumberOfMessagesPerBatch = 10;
-        public static int WaitTimeSeconds = 20;
-        public static readonly TimeSpan ReceiveTimeout = TimeSpan.FromSeconds(WaitTimeSeconds + 5);
-
-    }
-
     public class SimpleListener
     {
         private readonly IAmazonSQS _sqs;
@@ -108,12 +100,17 @@ namespace QueueListener
         /// </summary>
         /// <param name="messages"></param>
         /// <returns></returns>
-        private async Task HandleMessages(IEnumerable<Message> messages)
+        private async Task HandleMessages(IList<Message> messages)
         {
+            var handleTimer = Stopwatch.StartNew();
+
             foreach (var message in messages)
             {
                 await _messageHandler(message);
             }
+
+            handleTimer.Stop();
+            _logger.MessagesProcessed(messages.Count, handleTimer.ElapsedMilliseconds);
         }
     }
 }

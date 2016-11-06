@@ -115,12 +115,17 @@ namespace QueueListener
             };
         }
 
-        private void HandleMessages(IEnumerable<Message> messages)
+        private void HandleMessages(IList<Message> messages)
         {
+            var handleTimer = Stopwatch.StartNew();
+
             foreach (var message in messages)
             {
                 WaitHelper.RunInSemaphore(() => _messageHandler(message), _semaphore);
             }
+
+            handleTimer.Stop();
+            _logger.MessagesProcessed(messages.Count, handleTimer.ElapsedMilliseconds);
         }
     }
 }

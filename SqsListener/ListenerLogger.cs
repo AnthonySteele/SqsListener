@@ -8,6 +8,10 @@ namespace QueueListener
         {
         }
 
+        public void MessagesProcessed(int messagesCount, long recieveTimeMilliseconds)
+        {
+        }
+
         public void Throttling(int workerCount, long watchElapsedMilliseconds)
         {
         }
