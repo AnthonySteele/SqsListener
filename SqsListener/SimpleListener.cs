@@ -11,22 +11,19 @@ namespace QueueListener
     public class SimpleListener
     {
         private readonly ISQS _sqs;
-        private readonly string _queueUrl;
         private readonly Func<Message, Task> _messageHandler;
         private readonly CancellationToken _ctx;
         private readonly IListenerLogger _logger;
 
-        private readonly TaskList _tasks = new TaskList();
+        private readonly TaskList _tasks = new TaskList(10);
 
         public SimpleListener(
             ISQS sqs,
-            string queueUrl,
             Func<Message, Task> messageHandler,
             CancellationToken ctx,
             IListenerLogger logger)
         {
             _sqs = sqs;
-            _queueUrl = queueUrl;
             _messageHandler = messageHandler;
             _ctx = ctx;
             _logger = logger;
@@ -36,8 +33,8 @@ namespace QueueListener
         {
             while (!_ctx.IsCancellationRequested)
             {
-                await ListenOnce();
                 await WaitForCapacity();
+                await ListenOnce();
             }
         }
 
@@ -46,8 +43,7 @@ namespace QueueListener
             try
             {
                 var receiveTimer = Stopwatch.StartNew();
-                var request = MakeReceiveMessageRequest();
-                var sqsResponse = await ReceiveWithTimeout(request);
+                var sqsResponse = await ReceiveWithTimeout();
                 receiveTimer.Stop();
 
                 if (sqsResponse.Messages.Any())
@@ -67,7 +63,7 @@ namespace QueueListener
             }
         }
 
-        private async Task<ReceiveMessageResponse> ReceiveWithTimeout(ReceiveMessageRequest request)
+        private async Task<ReceiveMessageResponse> ReceiveWithTimeout()
         {
             var receiveTimeoutCancellation = new CancellationTokenSource(SimpleListenerConstants.ReceiveTimeout);
 
@@ -76,7 +72,7 @@ namespace QueueListener
                 using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
                     _ctx, receiveTimeoutCancellation.Token))
                 {
-                    return await _sqs.ReceiveMessageAsync(request, linkedCts.Token);
+                    return await _sqs.ReceiveMessageAsync(linkedCts.Token);
                 }
             }
             finally
@@ -86,16 +82,6 @@ namespace QueueListener
                     _logger.Timeout();
                 }
             }
-        }
-
-        private ReceiveMessageRequest MakeReceiveMessageRequest()
-        {
-            return new ReceiveMessageRequest
-            {
-                QueueUrl = _queueUrl,
-                MaxNumberOfMessages = 1,
-                WaitTimeSeconds = SimpleListenerConstants.WaitTimeSeconds
-            };
         }
 
         private void HandleMessage(Message message)
@@ -108,6 +94,7 @@ namespace QueueListener
         private async Task WaitForCapacity()
         {
             _tasks.ClearCompleted();
+
             if (!_tasks.CanAdd)
             {
                 await _tasks.WhenAny();

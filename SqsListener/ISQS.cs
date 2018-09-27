@@ -4,6 +4,6 @@ using Amazon.SQS.Model;
 
 public interface ISQS
 {
-    Task<ReceiveMessageResponse> ReceiveMessageAsync(ReceiveMessageRequest request, CancellationToken cancellationToken);
-    Task<DeleteMessageResponse> DeleteMessageAsync(DeleteMessageRequest request, CancellationToken cancellationToken);
+    Task<ReceiveMessageResponse> ReceiveMessageAsync(CancellationToken cancellationToken);
+    Task<DeleteMessageResponse> DeleteMessageAsync(string receiptHandle);
 }

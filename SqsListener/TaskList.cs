@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -9,14 +10,26 @@ namespace SqsListener
     /// </summary>
     public class TaskList
     {
-        private const int MaxSize = 12;
+        private readonly int _maxSize;
+        private readonly List<Task> _running;
 
-        private readonly List<Task> _running = new List<Task>(MaxSize);
+        public TaskList(int maxSize)
+        {
+            _maxSize = maxSize;
+            _running = new List<Task>(_maxSize);
+        }
 
-        public bool CanAdd => _running.Count < MaxSize;
+        public int Count => _running.Count;
+
+        public bool CanAdd => Count < _maxSize;
 
         public void Add(Task t)
         {
+            if (!CanAdd)
+            {
+                throw new InvalidOperationException("Task list is full");
+            }
+
             _running.Add(t);
         }
 
