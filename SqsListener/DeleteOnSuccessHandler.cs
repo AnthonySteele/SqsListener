@@ -1,18 +1,19 @@
-﻿using System;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
-using Amazon.SQS;
 using Amazon.SQS.Model;
+
 
 namespace QueueListener
 {
     public class DeleteOnSuccessHandler
     {
-        private readonly IAmazonSQS _sqs;
+        private readonly ISQS _sqs;
         private readonly string _queueUrl;
         private readonly Func<Message, Task<bool>> _innerHandler;
         private readonly Action<Exception> _exceptionLogger;
 
-        public DeleteOnSuccessHandler(IAmazonSQS sqs,
+        public DeleteOnSuccessHandler(ISQS sqs,
             string queueUrl, 
             Func<Message, Task<bool>> innerHandler,
             Action<Exception> exceptionLogger)
@@ -50,7 +51,7 @@ namespace QueueListener
                     ReceiptHandle = receiptHandle
                 };
 
-            await _sqs.DeleteMessageAsync(deleteRequest);
+            await _sqs.DeleteMessageAsync(deleteRequest, CancellationToken.None);
         }
     }
 }

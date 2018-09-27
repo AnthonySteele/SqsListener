@@ -1,14 +1,14 @@
-﻿using System;
+using System;
 
 namespace QueueListener
 {
     public class ListenerLogger : IListenerLogger
     {
-        public void MessagesReceived(int messagesCount, long recieveTimeMilliseconds)
+        public void MessageReceived(long recieveTimeMilliseconds)
         {
         }
 
-        public void MessagesProcessed(int messagesCount, long recieveTimeMilliseconds)
+        public void MessageProcessed(long recieveTimeMilliseconds)
         {
         }
 

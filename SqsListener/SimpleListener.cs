@@ -1,23 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Amazon.SQS;
 using Amazon.SQS.Model;
+using SqsListener;
 
 namespace QueueListener
 {
     public class SimpleListener
     {
-        private readonly IAmazonSQS _sqs;
+        private readonly ISQS _sqs;
         private readonly string _queueUrl;
         private readonly Func<Message, Task> _messageHandler;
         private readonly CancellationToken _ctx;
         private readonly IListenerLogger _logger;
 
+        private readonly TaskList _tasks = new TaskList();
+
         public SimpleListener(
-            IAmazonSQS sqs,
+            ISQS sqs,
             string queueUrl,
             Func<Message, Task> messageHandler,
             CancellationToken ctx,
@@ -35,6 +37,7 @@ namespace QueueListener
             while (!_ctx.IsCancellationRequested)
             {
                 await ListenOnce();
+                await WaitForCapacity();
             }
         }
 
@@ -45,11 +48,17 @@ namespace QueueListener
                 var receiveTimer = Stopwatch.StartNew();
                 var request = MakeReceiveMessageRequest();
                 var sqsResponse = await ReceiveWithTimeout(request);
-
                 receiveTimer.Stop();
 
-                _logger.MessagesReceived(sqsResponse.Messages.Count, receiveTimer.ElapsedMilliseconds);
-                await HandleMessages(sqsResponse.Messages);
+                if (sqsResponse.Messages.Any())
+                {
+                    _logger.MessageReceived(receiveTimer.ElapsedMilliseconds);
+                    HandleMessage(sqsResponse.Messages.First());
+                }
+                else
+                {
+                    await Task.Delay(SimpleListenerConstants.NoDataPause, _ctx);
+                }
             }
             catch (Exception ex)
             {
@@ -84,33 +93,26 @@ namespace QueueListener
             return new ReceiveMessageRequest
             {
                 QueueUrl = _queueUrl,
-                MaxNumberOfMessages = SimpleListenerConstants.MaxNumberOfMessagesPerBatch,
+                MaxNumberOfMessages = 1,
                 WaitTimeSeconds = SimpleListenerConstants.WaitTimeSeconds
             };
         }
 
-        /// <summary>
-        /// the problems with this approach are
-        /// - messages are handled 1 after another, not launched in parallel. 
-        /// You could start them all and then "await Task.WhenAll()
-        /// 
-        /// - but you also wait for the last handler to complete 
-        /// before getting any more messages off the queue. 
-        /// This is harder to fix and means that onbe fault can block the whole thing
-        /// </summary>
-        /// <param name="messages"></param>
-        /// <returns></returns>
-        private async Task HandleMessages(IList<Message> messages)
+        private void HandleMessage(Message message)
         {
-            var handleTimer = Stopwatch.StartNew();
+            // start it, but don't wait for completion
+            var task = _messageHandler(message);
+            _tasks.Add(task);
+        }
 
-            foreach (var message in messages)
+        private async Task WaitForCapacity()
+        {
+            _tasks.ClearCompleted();
+            if (!_tasks.CanAdd)
             {
-                await _messageHandler(message);
+                await _tasks.WhenAny();
+                _tasks.ClearCompleted();
             }
-
-            handleTimer.Stop();
-            _logger.MessagesProcessed(messages.Count, handleTimer.ElapsedMilliseconds);
         }
     }
 }

@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 
 namespace QueueListener
 {
     public interface IListenerLogger
     {
-        void MessagesReceived(int messagesCount, long recieveTimeMilliseconds);
-        void MessagesProcessed(int messagesCount, long recieveTimeMilliseconds);
+        void MessageReceived(long recieveTimeMilliseconds);
+        void MessageProcessed(long recieveTimeMilliseconds);
 
         void Throttling(int workerCount, long watchElapsedMilliseconds);
         void Timeout();
