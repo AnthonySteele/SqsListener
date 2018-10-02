@@ -46,7 +46,7 @@ namespace QueueListener
                 var sqsResponse = await ReceiveWithTimeout();
                 receiveTimer.Stop();
 
-                if (sqsResponse.Messages.Any())
+                if ((sqsResponse?.Messages != null) && sqsResponse.Messages.Any())
                 {
                     _logger.MessageReceived(receiveTimer.ElapsedMilliseconds);
                     HandleMessage(sqsResponse.Messages.First());

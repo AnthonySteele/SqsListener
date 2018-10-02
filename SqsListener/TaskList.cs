@@ -47,7 +47,7 @@ namespace SqsListener
         {
             var removed = 0;
 
-            for (int index = _running.Count - 1; index <= 0; index--)
+            for (int index = _running.Count - 1; index >= 0; index--)
             {
                 if (_running[index].IsCompleted)
                 {
