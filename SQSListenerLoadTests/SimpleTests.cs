@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS.Model;
-using QueueListener;
+using SqsListener;
 using Xunit;
 
 namespace SQSListenerLoadTests
@@ -18,7 +18,7 @@ namespace SQSListenerLoadTests
             var listener = new SimpleListener(dummySQS,
                 Handler,
                 CancelAfterSeconds(1),
-                new ListenerLogger());
+                new NullListenerLogger());
 
             await listener.Listen();
         }
@@ -28,10 +28,12 @@ namespace SQSListenerLoadTests
         {
             var dummySQS = new DummySQS(Enumerable.Empty<ReceiveMessageResponse>());
 
+            var handler = Handlers.Wrap(dummySQS, Handler, OnTiming, OnException);
+
             var listener = new SimpleListener(dummySQS,
-                Handler,
+                handler,
                 CancelAfterSeconds(5),
-                new ListenerLogger());
+                new NullListenerLogger());
 
             await listener.Listen();
         }
@@ -43,9 +45,20 @@ namespace SQSListenerLoadTests
             return cts.Token;
         }
 
-        private async Task Handler(Message arg)
+        private async Task<bool> Handler(Message message)
         {
             await Task.Delay(100);
+            return true;
+        }
+
+        private void OnException(Exception ex)
+        {
+
+        }
+
+        private void OnTiming(TimeSpan t)
+        {
+
         }
     }
 }

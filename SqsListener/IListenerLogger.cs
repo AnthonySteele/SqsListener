@@ -1,14 +1,15 @@
 using System;
 
-namespace QueueListener
+namespace SqsListener
 {
     public interface IListenerLogger
     {
         void MessageReceived(long recieveTimeMilliseconds);
-        void MessageProcessed(long recieveTimeMilliseconds);
 
-        void Throttling(int workerCount, long watchElapsedMilliseconds);
         void Timeout();
         void Exception(Exception exception, bool isCancelling);
+        void Idle(int idleCount);
+        void ListenLoopStart();
+        void ListenLoopEnd();
     }
 }

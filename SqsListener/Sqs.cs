@@ -2,39 +2,41 @@ using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS;
 using Amazon.SQS.Model;
-using QueueListener;
 
-public class Sqs : ISQS
+namespace SqsListener
 {
-    private readonly IAmazonSQS _sqs;
-    private readonly string _queueUrl;
-
-    public Sqs(IAmazonSQS sqs, string queueUrl)
+    public class Sqs : ISQS
     {
-        _sqs = sqs;
-        _queueUrl = queueUrl;
-    }
+        private readonly IAmazonSQS _sqs;
+        private readonly string _queueUrl;
 
-    public Task<ReceiveMessageResponse> ReceiveMessageAsync(CancellationToken cancellationToken)
-    {
-        var receiveRequest = new ReceiveMessageRequest
+        public Sqs(IAmazonSQS sqs, string queueUrl)
         {
-            QueueUrl = _queueUrl,
-            MaxNumberOfMessages = 1,
-            WaitTimeSeconds = SimpleListenerConstants.WaitTimeSeconds
-        };
+            _sqs = sqs;
+            _queueUrl = queueUrl;
+        }
 
-        return _sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
-    }
+        public Task<ReceiveMessageResponse> ReceiveMessageAsync(CancellationToken cancellationToken)
+        {
+            var receiveRequest = new ReceiveMessageRequest
+            {
+                QueueUrl = _queueUrl,
+                MaxNumberOfMessages = 1,
+                WaitTimeSeconds = SqsConstants.WaitTimeSeconds
+            };
 
-    public Task<DeleteMessageResponse> DeleteMessageAsync(string receiptHandle)
-    {
-        var deleteRequest = new DeleteMessageRequest
-        {       
-            QueueUrl = _queueUrl,
-            ReceiptHandle = receiptHandle
-        };
+            return _sqs.ReceiveMessageAsync(receiveRequest, cancellationToken);
+        }
 
-        return _sqs.DeleteMessageAsync(deleteRequest);
+        public Task<DeleteMessageResponse> DeleteMessageAsync(string receiptHandle)
+        {
+            var deleteRequest = new DeleteMessageRequest
+            {
+                QueueUrl = _queueUrl,
+                ReceiptHandle = receiptHandle
+            };
+
+            return _sqs.DeleteMessageAsync(deleteRequest);
+        }
     }
 }

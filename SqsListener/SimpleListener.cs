@@ -4,18 +4,21 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS.Model;
-using SqsListener;
 
-namespace QueueListener
+namespace SqsListener
 {
     public class SimpleListener
     {
+        public static readonly TimeSpan ReceiveTimeout = TimeSpan.FromSeconds(SqsConstants.WaitTimeSeconds + 5);
+
         private readonly ISQS _sqs;
         private readonly Func<Message, Task> _messageHandler;
         private readonly CancellationToken _ctx;
         private readonly IListenerLogger _logger;
 
         private readonly TaskList _tasks = new TaskList(10);
+
+        private int _idleCount;
 
         public SimpleListener(
             ISQS sqs,
@@ -31,11 +34,19 @@ namespace QueueListener
 
         public async Task Listen()
         {
+            _logger.ListenLoopStart();
+
             while (!_ctx.IsCancellationRequested)
             {
                 await WaitForCapacity();
+                if (_ctx.IsCancellationRequested)
+                {
+                    break;
+                }
                 await ListenOnce();
             }
+
+            _logger.ListenLoopEnd();
         }
 
         private async Task ListenOnce()
@@ -48,12 +59,14 @@ namespace QueueListener
 
                 if ((sqsResponse?.Messages != null) && sqsResponse.Messages.Any())
                 {
+                    _idleCount = 0;
                     _logger.MessageReceived(receiveTimer.ElapsedMilliseconds);
                     HandleMessage(sqsResponse.Messages.First());
                 }
                 else
                 {
-                    await Task.Delay(SimpleListenerConstants.NoDataPause, _ctx);
+                    await Idle();
+                    _idleCount++;
                 }
             }
             catch (Exception ex)
@@ -63,9 +76,25 @@ namespace QueueListener
             }
         }
 
+        private async Task Idle()
+        {
+            const int idleDuration = 50;
+            const int maxIdleCount = 10;
+
+            // Called when there are no messages
+            // and therefor there may be no messages in the near future
+            // so don't poll aws in a tight loop when there's nothing
+            // ramp up  the idle: if it's the first idle loop, idle for 0ms
+            // increase by 50ms each consecutive time, up to 0.5 seconds
+            var thisIdleCount = Math.Min(_idleCount, maxIdleCount);
+            var delay = TimeSpan.FromMilliseconds(idleDuration * thisIdleCount);
+            _logger.Idle(_idleCount);
+            await Task.Delay(delay, _ctx);
+        }
+
         private async Task<ReceiveMessageResponse> ReceiveWithTimeout()
         {
-            var receiveTimeoutCancellation = new CancellationTokenSource(SimpleListenerConstants.ReceiveTimeout);
+            var receiveTimeoutCancellation = new CancellationTokenSource(ReceiveTimeout);
 
             try
             {

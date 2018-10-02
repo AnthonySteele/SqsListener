@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS.Model;
+using SqsListener;
 
 namespace SQSListenerLoadTests
 {
