@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,9 +41,35 @@ namespace SQSListenerLoadTests
         }
 
         [Fact]
-        public void TestWithData()
+        public async Task TestWithOneMessage()
         {
-            //todo
+            var response = new ReceiveMessageResponse
+            {
+                Messages = new List<Message>
+                {
+                    new Message
+                    {
+                        Body = "some message"
+                    }
+                }
+            };
+
+            var responses = new List<ReceiveMessageResponse>
+            {
+                response
+            };
+
+            var dummySQS = new DummySQS(responses);
+
+            var handler = Handlers.Wrap(Handler, dummySQS, OnTiming, OnException);
+
+            var listener = new SimpleListener(dummySQS,
+                handler,
+                CancelAfterSeconds(1),
+                new NullListenerLogger());
+
+            await listener.Listen();
+
         }
 
         private CancellationToken CancelAfterSeconds(int seconds)
@@ -54,6 +81,7 @@ namespace SQSListenerLoadTests
         private async Task<bool> Handler(Message message)
         {
             await Task.Delay(100);
+            Console.WriteLine($"Handled message {message.Body}");
             return true;
         }
 
