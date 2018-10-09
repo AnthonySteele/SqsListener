@@ -13,9 +13,10 @@ namespace SQSListenerLoadTests
         [Fact]
         public async Task RunForASecond()
         {
-            var dummySQS = new DummySQS(Enumerable.Empty<ReceiveMessageResponse>());
+            var dummySqs = new DummySQS(Enumerable.Empty<ReceiveMessageResponse>());
 
-            var listener = new SimpleListener(dummySQS,
+            var listener = new SimpleListener(
+                dummySqs,
                 Handler,
                 CancelAfterSeconds(1),
                 new NullListenerLogger());
@@ -28,7 +29,7 @@ namespace SQSListenerLoadTests
         {
             var dummySQS = new DummySQS(Enumerable.Empty<ReceiveMessageResponse>());
 
-            var handler = Handlers.Wrap(dummySQS, Handler, OnTiming, OnException);
+            var handler = Handlers.Wrap(Handler, dummySQS, OnTiming, OnException);
 
             var listener = new SimpleListener(dummySQS,
                 handler,
@@ -38,10 +39,15 @@ namespace SQSListenerLoadTests
             await listener.Listen();
         }
 
+        [Fact]
+        public void TestWithData()
+        {
+            //todo
+        }
+
         private CancellationToken CancelAfterSeconds(int seconds)
         {
-            var cts = new CancellationTokenSource();
-            cts.CancelAfter(TimeSpan.FromSeconds(seconds));
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));
             return cts.Token;
         }
 

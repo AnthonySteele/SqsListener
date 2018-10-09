@@ -4,7 +4,11 @@ namespace SqsListener
 {
     public class NullListenerLogger : IListenerLogger
     {
-        public void MessageReceived(long recieveTimeMilliseconds)
+        public void MessageReceived(TimeSpan duration)
+        {
+        }
+
+        public void Throttled(TimeSpan duration)
         {
         }
 

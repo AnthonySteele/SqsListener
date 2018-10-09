@@ -4,12 +4,13 @@ namespace SqsListener
 {
     public interface IListenerLogger
     {
-        void MessageReceived(long recieveTimeMilliseconds);
+        void ListenLoopStart();
+        void ListenLoopEnd();
+        void MessageReceived(TimeSpan duration);
 
         void Timeout();
         void Exception(Exception exception, bool isCancelling);
         void Idle(int idleCount);
-        void ListenLoopStart();
-        void ListenLoopEnd();
+        void Throttled(TimeSpan duration);
     }
 }

@@ -16,7 +16,7 @@ namespace SqsListener
         private readonly CancellationToken _ctx;
         private readonly IListenerLogger _logger;
 
-        private readonly TaskList _tasks = new TaskList(10);
+        private readonly TaskList _tasks = new TaskList(4);
 
         private int _idleCount;
 
@@ -38,12 +38,15 @@ namespace SqsListener
 
             while (!_ctx.IsCancellationRequested)
             {
-                await WaitForCapacity();
+                await WaitForCapacity()
+                    .ConfigureAwait(false);
+
                 if (_ctx.IsCancellationRequested)
                 {
                     break;
                 }
-                await ListenOnce();
+                await ListenOnce()
+                    .ConfigureAwait(false);
             }
 
             _logger.ListenLoopEnd();
@@ -54,18 +57,22 @@ namespace SqsListener
             try
             {
                 var receiveTimer = Stopwatch.StartNew();
-                var sqsResponse = await ReceiveWithTimeout();
+                var sqsResponse = await ReceiveWithTimeout()
+                    .ConfigureAwait(false);
+
                 receiveTimer.Stop();
 
                 if ((sqsResponse?.Messages != null) && sqsResponse.Messages.Any())
                 {
                     _idleCount = 0;
-                    _logger.MessageReceived(receiveTimer.ElapsedMilliseconds);
+                    _logger.MessageReceived(receiveTimer.Elapsed);
                     HandleMessage(sqsResponse.Messages.First());
                 }
                 else
                 {
-                    await Idle();
+                    await Idle()
+                        .ConfigureAwait(false);
+
                     _idleCount++;
                 }
             }
@@ -89,7 +96,8 @@ namespace SqsListener
             var thisIdleCount = Math.Min(_idleCount, maxIdleCount);
             var delay = TimeSpan.FromMilliseconds(idleDuration * thisIdleCount);
             _logger.Idle(_idleCount);
-            await Task.Delay(delay, _ctx);
+            await Task.Delay(delay, _ctx)
+                .ConfigureAwait(false);
         }
 
         private async Task<ReceiveMessageResponse> ReceiveWithTimeout()
@@ -101,7 +109,8 @@ namespace SqsListener
                 using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
                     _ctx, receiveTimeoutCancellation.Token))
                 {
-                    return await _sqs.ReceiveMessageAsync(linkedCts.Token);
+                    return await _sqs.ReceiveMessageAsync(linkedCts.Token)
+                        .ConfigureAwait(false);
                 }
             }
             finally
@@ -116,7 +125,10 @@ namespace SqsListener
         private void HandleMessage(Message message)
         {
             // start it, but don't wait for completion
-            var task = _messageHandler(message);
+            // it is still an open question if we should involve the thread pool at all
+            var task = Task.Run(
+                async () => await _messageHandler(message).ConfigureAwait(false),
+                _ctx);
             _tasks.Add(task);
         }
 
@@ -126,8 +138,14 @@ namespace SqsListener
 
             if (!_tasks.CanAdd)
             {
-                await _tasks.WhenAny();
+                var capacityTimer = Stopwatch.StartNew();
+
+                await _tasks.WhenAny()
+                    .ConfigureAwait(false);
                 _tasks.ClearCompleted();
+
+                capacityTimer.Stop();
+                _logger.Throttled(capacityTimer.Elapsed);
             }
         }
     }

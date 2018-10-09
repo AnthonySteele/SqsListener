@@ -8,8 +8,8 @@ namespace SqsListener
     public static class Handlers
     {
         public static Func<Message, Task> Wrap(
-            ISQS sqs,
             Func<Message, Task<bool>> innerHandler,
+            ISQS sqs,
             Action<TimeSpan> onTiming,
             Action<Exception> onException)
         {
