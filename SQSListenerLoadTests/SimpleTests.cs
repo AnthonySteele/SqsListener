@@ -13,7 +13,7 @@ namespace SQSListenerLoadTests
         [Fact]
         public async Task RunForASecond()
         {
-            var dummySqs = new DummySQS(Enumerable.Empty<ReceiveMessageResponse>());
+            var dummySqs = new FixedDataSqs(Enumerable.Empty<ReceiveMessageResponse>());
 
             var listener = new SimpleListener(
                 dummySqs,
@@ -27,7 +27,7 @@ namespace SQSListenerLoadTests
         [Fact]
         public async Task RunForFiveSeconds()
         {
-            var dummySQS = new DummySQS(Enumerable.Empty<ReceiveMessageResponse>());
+            var dummySQS = new FixedDataSqs(Enumerable.Empty<ReceiveMessageResponse>());
 
             var handler = Handlers.Wrap(Handler, dummySQS, OnTiming, OnException);
 

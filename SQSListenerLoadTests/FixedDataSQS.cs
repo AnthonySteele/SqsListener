@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS.Model;
@@ -6,11 +7,11 @@ using SqsListener;
 
 namespace SQSListenerLoadTests
 {
-    class DummySQS: ISQS
+    class FixedDataSqs: ISQS
     {
         private readonly Queue<ReceiveMessageResponse> _pending;
 
-        public DummySQS(IEnumerable<ReceiveMessageResponse> items)
+        public FixedDataSqs(IEnumerable<ReceiveMessageResponse> items)
         {
             _pending = new Queue<ReceiveMessageResponse>(items);
         }

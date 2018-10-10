@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS.Model;
@@ -13,8 +14,8 @@ namespace SQSListenerLoadTests
         [Fact]
         public async Task TestWithOneMessage()
         {
-            var responses = MakeResponse(1);
-            var dummySQS = new DummySQS(responses);
+            var responses = MakeResponses(1);
+            var dummySQS = new FixedDataSqs(responses);
 
             int receivedCount = 0;
 
@@ -42,8 +43,8 @@ namespace SQSListenerLoadTests
         [Fact]
         public async Task TestWith100Messages()
         {
-            var responses = MakeResponse(100);
-            var dummySQS = new DummySQS(responses);
+            var responses = MakeResponses(100);
+            var dummySQS = new FixedDataSqs(responses);
 
             int receivedCount = 0;
 
@@ -68,27 +69,61 @@ namespace SQSListenerLoadTests
             Assert.Equal(100, receivedCount);
         }
 
-        private static List<ReceiveMessageResponse> MakeResponse(int count)
+        [Fact]
+        public async Task TestWithMessagesFor5Seconds()
+        {
+            var dummySQS = new GeneratedDataSqs(MakeResponse, CancelAfterSeconds(5));
+
+            int receivedCount = 0;
+
+            async Task<bool> Handler(Message message)
+            {
+                await Task.Delay(50);
+                Console.WriteLine($"Handled message {message.Body}");
+
+                Interlocked.Increment(ref receivedCount);
+                return true;
+            }
+
+            var wrappedHandler = Handlers.Wrap(Handler, dummySQS, OnTiming, OnException);
+
+            var listener = new SimpleListener(dummySQS,
+                wrappedHandler,
+                CancelAfterSeconds(5),
+                new NullListenerLogger());
+
+            await listener.Listen();
+
+            Assert.True(receivedCount > 100);
+        }
+
+
+        private static List<ReceiveMessageResponse> MakeResponses(int count)
         {
             var responses = new List<ReceiveMessageResponse>();
 
             for (int index = 0; index < count; index++)
             {
-                var response = new ReceiveMessageResponse
-                {
-                    Messages = new List<Message>
-                    {
-                        new Message
-                        {
-                            Body = "some message"
-                        }
-                    }
-                };
-
+                var response = MakeResponse();
                 responses.Add(response);
             }
 
             return responses;
+        }
+
+        private static ReceiveMessageResponse MakeResponse()
+        {
+            var response = new ReceiveMessageResponse
+            {
+                Messages = new List<Message>
+                {
+                    new Message
+                    {
+                        Body = "some message"
+                    }
+                }
+            };
+            return response;
         }
 
         private CancellationToken CancelAfterSeconds(int seconds)
