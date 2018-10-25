@@ -4,7 +4,7 @@ namespace SqsListener
 {
     public class NullListenerLogger : IListenerLogger
     {
-        public void MessageReceived(TimeSpan duration)
+        public void MessagesReceived(TimeSpan duration, int messageCount)
         {
         }
 
@@ -18,10 +18,6 @@ namespace SqsListener
 
         public void Exception(Exception exception, bool isCancelling)
         {
-        }
-
-        public void Idle(int idleCount)
-        {            
         }
 
         public void ListenLoopStart()

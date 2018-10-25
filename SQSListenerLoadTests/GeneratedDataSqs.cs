@@ -17,7 +17,7 @@ namespace SQSListenerLoadTests
             _ctx = ctx;
         }
 
-        public async Task<ReceiveMessageResponse> ReceiveMessageAsync(CancellationToken cancellationToken)
+        public async Task<ReceiveMessageResponse> ReceiveMessagesAsync(int max, CancellationToken cancellationToken)
         {
             await Task.Delay(1);
 

@@ -6,11 +6,10 @@ namespace SqsListener
     {
         void ListenLoopStart();
         void ListenLoopEnd();
-        void MessageReceived(TimeSpan duration);
+        void MessagesReceived(TimeSpan duration, int messageCount);
 
         void Timeout();
         void Exception(Exception exception, bool isCancelling);
-        void Idle(int idleCount);
         void Throttled(TimeSpan duration);
     }
 }

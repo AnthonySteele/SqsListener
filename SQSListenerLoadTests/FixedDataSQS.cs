@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS.Model;
@@ -16,7 +15,7 @@ namespace SQSListenerLoadTests
             _pending = new Queue<ReceiveMessageResponse>(items);
         }
 
-        public async Task<ReceiveMessageResponse> ReceiveMessageAsync(CancellationToken cancellationToken)
+        public async Task<ReceiveMessageResponse> ReceiveMessagesAsync(int max, CancellationToken cancellationToken)
         {
             await Task.Delay(1, cancellationToken);
             if (_pending.Count == 0)

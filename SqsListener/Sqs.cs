@@ -16,12 +16,12 @@ namespace SqsListener
             _queueUrl = queueUrl;
         }
 
-        public Task<ReceiveMessageResponse> ReceiveMessageAsync(CancellationToken cancellationToken)
+        public Task<ReceiveMessageResponse> ReceiveMessagesAsync(int max, CancellationToken cancellationToken)
         {
             var receiveRequest = new ReceiveMessageRequest
             {
                 QueueUrl = _queueUrl,
-                MaxNumberOfMessages = 1,
+                MaxNumberOfMessages = max,
                 WaitTimeSeconds = SqsConstants.WaitTimeSeconds
             };
 

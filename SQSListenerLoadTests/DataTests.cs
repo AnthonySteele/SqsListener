@@ -69,10 +69,13 @@ namespace SQSListenerLoadTests
             Assert.Equal(100, receivedCount);
         }
 
-        [Fact]
-        public async Task TestWithMessagesFor5Seconds()
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(5)]
+        public async Task TestWithMessagesForSeconds(int seconds)
         {
-            var dummySQS = new GeneratedDataSqs(MakeResponse, CancelAfterSeconds(5));
+            var dummySQS = new GeneratedDataSqs(MakeResponse, CancelAfterSeconds(seconds));
 
             int receivedCount = 0;
 
@@ -89,14 +92,13 @@ namespace SQSListenerLoadTests
 
             var listener = new SimpleListener(dummySQS,
                 wrappedHandler,
-                CancelAfterSeconds(5),
+                CancelAfterSeconds(seconds),
                 new NullListenerLogger());
 
             await listener.Listen();
 
-            Assert.True(receivedCount > 100);
+            Assert.True(receivedCount > 10 * seconds);
         }
-
 
         private static List<ReceiveMessageResponse> MakeResponses(int count)
         {

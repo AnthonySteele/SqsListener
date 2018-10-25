@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -16,9 +17,7 @@ namespace SqsListener
         private readonly CancellationToken _ctx;
         private readonly IListenerLogger _logger;
 
-        private readonly TaskList _tasks = new TaskList(4);
-
-        private int _idleCount;
+        private readonly TaskList _tasks = new TaskList(10);
 
         public SimpleListener(
             ISQS sqs,
@@ -45,6 +44,7 @@ namespace SqsListener
                 {
                     break;
                 }
+
                 await ListenOnce()
                     .ConfigureAwait(false);
             }
@@ -62,18 +62,10 @@ namespace SqsListener
 
                 receiveTimer.Stop();
 
-                if ((sqsResponse?.Messages != null) && sqsResponse.Messages.Any())
+                if (sqsResponse?.Messages?.Any() == true)
                 {
-                    _idleCount = 0;
-                    _logger.MessageReceived(receiveTimer.Elapsed);
-                    HandleMessage(sqsResponse.Messages.First());
-                }
-                else
-                {
-                    await Idle()
-                        .ConfigureAwait(false);
-
-                    _idleCount++;
+                    _logger.MessagesReceived(receiveTimer.Elapsed, sqsResponse.Messages.Count);
+                    HandleMessages(sqsResponse.Messages);
                 }
             }
             catch (Exception ex)
@@ -83,25 +75,10 @@ namespace SqsListener
             }
         }
 
-        private async Task Idle()
-        {
-            const int idleDuration = 50;
-            const int maxIdleCount = 10;
-
-            // Called when there are no messages
-            // and therefor there may be no messages in the near future
-            // so don't poll aws in a tight loop when there's nothing
-            // ramp up  the idle: if it's the first idle loop, idle for 0ms
-            // increase by 50ms each consecutive time, up to 0.5 seconds
-            var thisIdleCount = Math.Min(_idleCount, maxIdleCount);
-            var delay = TimeSpan.FromMilliseconds(idleDuration * thisIdleCount);
-            _logger.Idle(_idleCount);
-            await Task.Delay(delay, _ctx)
-                .ConfigureAwait(false);
-        }
-
         private async Task<ReceiveMessageResponse> ReceiveWithTimeout()
         {
+            const int maxMessagesPerQuery = 6;
+            var maxMessages = Math.Min(_tasks.Capacity, maxMessagesPerQuery);
             var receiveTimeoutCancellation = new CancellationTokenSource(ReceiveTimeout);
 
             try
@@ -109,7 +86,7 @@ namespace SqsListener
                 using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
                     _ctx, receiveTimeoutCancellation.Token))
                 {
-                    return await _sqs.ReceiveMessageAsync(linkedCts.Token)
+                    return await _sqs.ReceiveMessagesAsync(maxMessages, linkedCts.Token)
                         .ConfigureAwait(false);
                 }
             }
@@ -122,21 +99,29 @@ namespace SqsListener
             }
         }
 
-        private void HandleMessage(Message message)
+        private void HandleMessages(List<Message> messages)
         {
-            // start it, but don't wait for completion
-            // it is still an open question if we should involve the thread pool at all
-            var task = Task.Run(
-                async () => await _messageHandler(message).ConfigureAwait(false),
+            foreach (var message in messages)
+            {
+                // start it, but don't wait for completion
+                // it is still an open question if we should involve
+                // the thread pool at all
+                _tasks.Add(MessageHandlerTask(message));
+            }
+        }
+
+        private Task MessageHandlerTask(Message message)
+        {
+            return Task.Run(async ()
+                    => await _messageHandler(message).ConfigureAwait(false),
                 _ctx);
-            _tasks.Add(task);
         }
 
         private async Task WaitForCapacity()
         {
             _tasks.ClearCompleted();
 
-            if (!_tasks.CanAdd)
+            if (_tasks.Capacity <= 0)
             {
                 var capacityTimer = Stopwatch.StartNew();
 

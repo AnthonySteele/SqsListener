@@ -6,7 +6,7 @@ namespace SqsListener
 {
     public interface ISQS
     {
-        Task<ReceiveMessageResponse> ReceiveMessageAsync(CancellationToken cancellationToken);
+        Task<ReceiveMessageResponse> ReceiveMessagesAsync(int max, CancellationToken cancellationToken);
         Task<DeleteMessageResponse> DeleteMessageAsync(string receiptHandle);
     }
 }

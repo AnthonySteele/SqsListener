@@ -5,8 +5,9 @@ using System.Threading.Tasks;
 namespace SqsListener
 {
     /// <summary>
-    /// Not thread-safe, but should be accessed only by 1 SimpleListener
-    /// In a serial fashion
+    /// This is not thread-safe, but it does not need to be:
+    /// it should be owned by 1 SimpleListener
+    /// And accessed only thereby, in a serial fashion
     /// </summary>
     public class TaskList
     {
@@ -19,13 +20,11 @@ namespace SqsListener
             _running = new List<Task>(_maxSize);
         }
 
-        public int Count => _running.Count;
-
-        public bool CanAdd => Count < _maxSize;
+        public int Capacity => _maxSize - _running.Count;
 
         public void Add(Task t)
         {
-            if (!CanAdd)
+            if (Capacity <= 0)
             {
                 throw new InvalidOperationException("Task list is full");
             }
@@ -47,7 +46,7 @@ namespace SqsListener
         {
             var removed = 0;
 
-            for (int index = _running.Count - 1; index >= 0; index--)
+            for (var index = _running.Count - 1; index >= 0; index--)
             {
                 if (_running[index].IsCompleted)
                 {
